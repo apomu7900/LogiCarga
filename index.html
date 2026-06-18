@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestión de Muelles — Ventanas Horarias</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{--navy:#0F2344;--navy-mid:#1A3560;--blue:#2563EB;--blue-light:#DBEAFE;--teal:#0D9488;--teal-light:#CCFBF1;--amber:#D97706;--amber-light:#FEF3C7;--red:#DC2626;--red-light:#FEE2E2;--green:#16A34A;--green-light:#DCFCE7;--gray-50:#F8FAFC;--gray-100:#F1F5F9;--gray-200:#E2E8F0;--gray-300:#CBD5E1;--gray-400:#94A3B8;--gray-600:#475569;--gray-800:#1E293B;--white:#FFFFFF;--sidebar-w:220px;--header-h:60px;--font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;--radius:8px;--radius-lg:12px;--shadow:0 1px 3px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.04);--shadow-md:0 4px 12px rgba(0,0,0,0.10)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--gray-50);color:var(--gray-800);font-size:14px;line-height:1.5;display:flex;flex-direction:column;min-height:100vh}
+header{height:var(--header-h);background:var(--navy);display:flex;align-items:center;padding:0 24px;gap:16px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
+.logo{display:flex;align-items:center;gap:10px;color:#fff;font-weight:600;font-size:15px;letter-spacing:-0.3px;text-decoration:none}
+.logo-icon{width:32px;height:32px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:18px;height:18px;fill:#fff}
+header .spacer{flex:1}
+.date-nav{display:flex;align-items:center;gap:8px}
+.btn-icon{width:32px;height:32px;border:1px solid rgba(255,255,255,0.15);border-radius:6px;background:rgba(255,255,255,0.06);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:background 0.15s}
+.btn-icon:hover{background:rgba(255,255,255,0.12)}
+#date-input{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#fff;padding:0 10px;height:32px;font-size:12px;font-family:var(--font);cursor:pointer}
+#date-input::-webkit-calendar-picker-indicator{filter:invert(1);opacity:0.6}
+.hdr-date{color:rgba(255,255,255,0.6);font-size:12px;margin-left:12px}
+.hdr-date strong{color:#fff;font-weight:500}
+.app-body{display:flex;flex:1;min-height:0}
+nav{width:var(--sidebar-w);background:var(--white);border-right:1px solid var(--gray-200);padding:16px 0;display:flex;flex-direction:column;position:sticky;top:var(--header-h);height:calc(100vh - var(--header-h));overflow-y:auto}
+.nav-group{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.8px;color:var(--gray-400);padding:0 16px 6px;margin-top:12px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;font-size:13px;color:var(--gray-600);transition:all 0.12s;border-left:3px solid transparent;text-decoration:none}
+.nav-item:hover{background:var(--gray-50);color:var(--gray-800)}
+.nav-item.active{background:var(--blue-light);color:var(--blue);border-left-color:var(--blue);font-weight:500}
+.nav-item svg{width:16px;height:16px;flex-shrink:0}
+main{flex:1;padding:24px;overflow-y:auto;min-width:0}
+.screen{display:none}.screen.active{display:block}
+.card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:20px;box-shadow:var(--shadow)}
+.card-title{font-size:14px;font-weight:600;color:var(--gray-800);margin-bottom:16px}
+.metrics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.metric{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:16px 20px;box-shadow:var(--shadow)}
+.metric.accent{border-left:3px solid var(--blue)}
+.metric-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;color:var(--gray-400);margin-bottom:6px}
+.metric-value{font-size:26px;font-weight:600;color:var(--gray-800);letter-spacing:-0.5px}
+.metric-sub{font-size:12px;color:var(--gray-400);margin-top:3px}
+.gantt-wrap{overflow-x:auto}
+.gantt-table{width:100%;border-collapse:collapse;font-size:12px;min-width:780px}
+.gantt-table th{background:var(--gray-50);padding:8px 6px;text-align:center;font-weight:500;color:var(--gray-400);border-bottom:1px solid var(--gray-200);font-size:11px;white-space:nowrap}
+.gantt-table th.mth{text-align:left;padding-left:14px;width:70px}
+.gantt-table td{padding:3px;border-bottom:1px solid var(--gray-100);height:40px;vertical-align:middle}
+.gantt-table td.mc{font-weight:600;color:var(--navy);padding-left:14px;font-family:var(--mono);font-size:12px;white-space:nowrap;background:var(--gray-50);border-right:1px solid var(--gray-200)}
+.gantt-table tr:hover td:not(.mc){background:rgba(37,99,235,0.02)}
+.slot{display:flex;align-items:center;justify-content:center;height:30px;border-radius:5px;font-size:10px;font-weight:500;cursor:default;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px;transition:filter 0.1s}
+.slot.libre{background:var(--green-light);color:#15803D}
+.slot.ocupado{background:var(--blue-light);color:#1D4ED8;cursor:pointer}
+.slot.ocupado:hover{filter:brightness(0.93)}
+.slot.espera{background:var(--amber-light);color:#B45309;cursor:pointer}
+.slot.espera:hover{filter:brightness(0.93)}
+.slot.bloqueado{background:var(--gray-100);color:var(--gray-400)}
+.legend{display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gray-600)}
+.legend-dot{width:10px;height:10px;border-radius:3px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.form-grid.three{grid-template-columns:1fr 1fr 1fr}
+.form-group label{display:block;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.4px;color:var(--gray-400);margin-bottom:5px}
+.form-group input,.form-group select{width:100%;padding:8px 12px;border:1px solid var(--gray-200);border-radius:var(--radius);font-size:13px;color:var(--gray-800);background:var(--white);font-family:var(--font);transition:border-color 0.15s}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,0.08)}
+.btn{padding:9px 18px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;font-family:var(--font);border:1px solid transparent}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{background:#1D4ED8}
+.btn-secondary{background:var(--white);color:var(--gray-600);border-color:var(--gray-200)}
+.btn-secondary:hover{background:var(--gray-50)}
+.btn-danger{background:#FEF2F2;color:var(--red);border-color:#FEE2E2}
+.btn-danger:hover{background:#FEE2E2}
+.btn-sm{padding:5px 10px;font-size:11px}
+.result-ok{background:linear-gradient(135deg,#EFF6FF,#F0FDF4);border:1px solid #BFDBFE;border-radius:var(--radius-lg);padding:16px 20px;margin-top:16px}
+.result-err{background:#FFF5F5;border:1px solid #FECACA;border-radius:var(--radius-lg);padding:16px 20px;margin-top:16px}
+.result-title{font-size:13px;font-weight:600;margin-bottom:10px}
+.result-title.ok{color:var(--green)}.result-title.err{color:var(--red)}
+.result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.result-item label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.4px;color:var(--gray-400);display:block;margin-bottom:2px}
+.result-item .val{font-size:16px;font-weight:600;color:var(--navy);font-family:var(--mono)}
+.agenda-table{width:100%;border-collapse:collapse;font-size:13px}
+.agenda-table thead th{padding:10px 14px;text-align:left;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.4px;color:var(--gray-400);border-bottom:1px solid var(--gray-200);white-space:nowrap}
+.agenda-table tbody td{padding:11px 14px;border-bottom:1px solid var(--gray-100);vertical-align:middle}
+.agenda-table tbody tr:hover td{background:var(--gray-50)}
+.agenda-table tbody tr:last-child td{border-bottom:none}
+.ref-code{font-family:var(--mono);font-size:12px;background:var(--gray-100);padding:2px 6px;border-radius:4px;color:var(--gray-800)}
+.muelle-badge{font-family:var(--mono);font-weight:600;color:var(--navy);font-size:13px}
+.hour-badge{font-family:var(--mono);font-weight:500;color:var(--gray-800)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%}
+.badge-prog{background:var(--blue-light);color:#1D4ED8}.badge-prog::before{background:#1D4ED8}
+.badge-asig{background:var(--teal-light);color:#0F766E}.badge-asig::before{background:#0F766E}
+.badge-esp{background:var(--amber-light);color:#B45309}.badge-esp::before{background:#B45309}
+.badge-comp{background:var(--green-light);color:#15803D}.badge-comp::before{background:#15803D}
+.dash-grid{display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:20px}
+.sat-row{display:grid;grid-template-columns:52px 1fr 40px;gap:10px;align-items:center;margin-bottom:8px}
+.sat-label{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--navy-mid)}
+.sat-bg{height:10px;background:var(--gray-100);border-radius:5px;overflow:hidden}
+.sat-fg{height:100%;border-radius:5px;transition:width 0.7s cubic-bezier(.4,0,.2,1)}
+.sat-pct{font-size:11px;font-weight:500;color:var(--gray-600);text-align:right}
+.config-table{width:100%;border-collapse:collapse;font-size:13px}
+.config-table th{padding:9px 14px;text-align:left;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.4px;color:var(--gray-400);border-bottom:1px solid var(--gray-200);background:var(--gray-50)}
+.config-table td{padding:10px 14px;border-bottom:1px solid var(--gray-100)}
+.config-input{width:80px;text-align:center;padding:6px 8px;border:1px solid var(--gray-200);border-radius:6px;font-size:13px;font-family:var(--mono);color:var(--navy)}
+.config-input:focus{outline:none;border-color:var(--blue)}
+.muelles-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:4px}
+.muelle-btn{padding:10px 8px;border-radius:var(--radius);border:1px solid var(--gray-200);background:var(--white);font-family:var(--mono);font-size:12px;font-weight:600;color:var(--navy);cursor:pointer;transition:all 0.15s;text-align:center;line-height:1.4}
+.muelle-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-light)}
+.muelle-btn.bloqueado{background:var(--gray-100);color:var(--gray-400);border-color:var(--gray-200)}
+.muelle-btn.bloqueado:hover{background:#FEF2F2;border-color:#FECACA;color:var(--red)}
+.modal-ov{position:fixed;inset:0;background:rgba(15,35,68,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity 0.2s}
+.modal-ov.open{opacity:1;pointer-events:all}
+.modal{background:var(--white);border-radius:var(--radius-lg);padding:24px;width:100%;max-width:400px;box-shadow:var(--shadow-md);transform:scale(0.97);transition:transform 0.2s}
+.modal-ov.open .modal{transform:scale(1)}
+.modal-ttl{font-size:15px;font-weight:600;color:var(--navy);margin-bottom:16px;display:flex;justify-content:space-between;align-items:center}
+.modal-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--gray-100);font-size:13px}
+.modal-row:last-child{border-bottom:none}
+.modal-row .k{color:var(--gray-400);font-size:12px}
+.modal-row .v{font-weight:500;font-family:var(--mono);font-size:12px}
+.toast-w{position:fixed;bottom:24px;right:24px;z-index:300;pointer-events:none}
+.toast{background:var(--navy);color:#fff;padding:10px 16px;border-radius:var(--radius);font-size:13px;font-weight:500;box-shadow:var(--shadow-md);opacity:0;transform:translateY(8px);transition:all 0.25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.page-header{margin-bottom:20px;display:flex;align-items:flex-start;justify-content:space-between}
+.page-title{font-size:18px;font-weight:600;color:var(--navy);letter-spacing:-0.3px}
+.page-sub{font-size:12px;color:var(--gray-400);margin-top:2px}
+.empty{text-align:center;padding:48px 20px;color:var(--gray-400)}
+.empty-icon{font-size:36px;margin-bottom:8px}
+@media(max-width:900px){.metrics-grid{grid-template-columns:repeat(2,1fr)}.dash-grid{grid-template-columns:1fr}}
+@media(max-width:640px){.nav-item span{display:none}.nav-item{justify-content:center;padding:10px}.nav-group{display:none}nav{width:52px}.metrics-grid{grid-template-columns:1fr 1fr}.form-grid,.form-grid.three{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 20 20"><path d="M2 4h16v2H2V4zm0 5h10v2H2V9zm0 5h16v2H2v-2z"/><rect x="14" y="8" width="4" height="6" rx="1"/></svg>
+    </div>
+    Gestión Muelles
+  </div>
+  <span class="spacer"></span>
+  <div class="date-nav">
+    <button class="btn-icon" onclick="changeDay(-1)" title="Día anterior">&#8592;</button>
+    <input type="date" id="date-input" onchange="changeDate(this.value)">
+    <button class="btn-icon" onclick="changeDay(1)" title="Día siguiente">&#8594;</button>
+  </div>
+  <span class="hdr-date">Hoy: <strong id="hdr-hoy"></strong></span>
+</header>
+
+<div class="app-body">
+<nav>
+  <div class="nav-group">Vista</div>
+  <a class="nav-item active" onclick="goTo('planificacion',this);return false" href="#">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="16" height="14" rx="2"/><path d="M2 7h16M6 3v4M14 3v4"/></svg>
+    <span>Planificación</span>
+  </a>
+  <a class="nav-item" onclick="goTo('agenda',this);return false" href="#">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 6h12M4 10h12M4 14h8"/></svg>
+    <span>Agenda</span>
+  </a>
+  <a class="nav-item" onclick="goTo('dashboard',this);return false" href="#">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="12" width="4" height="5" rx="1"/><rect x="8" y="8" width="4" height="9" rx="1"/><rect x="14" y="3" width="4" height="14" rx="1"/></svg>
+    <span>Dashboard</span>
+  </a>
+  <div class="nav-group">Operación</div>
+  <a class="nav-item" onclick="goTo('nueva-carga',this);return false" href="#">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="8"/><path d="M10 6v8M6 10h8"/></svg>
+    <span>Nueva carga</span>
+  </a>
+  <div class="nav-group">Sistema</div>
+  <a class="nav-item" onclick="goTo('config',this);return false" href="#">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="10" cy="10" r="3"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/></svg>
+    <span>Configuración</span>
+  </a>
+</nav>
+
+<main>
+
+<div id="screen-planificacion" class="screen active">
+  <div class="page-header">
+    <div><p class="page-title">Planificación de muelles</p><p class="page-sub" id="plan-sub"></p></div>
+    <button class="btn btn-primary" onclick="goTo('nueva-carga', document.querySelectorAll('.nav-item')[3])">+ Nueva carga</button>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#DCFCE7"></div> Libre</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#DBEAFE"></div> Ocupado</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FEF3C7"></div> Espera</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#F1F5F9;border:1px solid #E2E8F0"></div> Bloqueado</div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="gantt-wrap">
+      <table class="gantt-table" id="gantt-table"></table>
+    </div>
+  </div>
+  <p style="font-size:11px;color:var(--gray-400);margin-top:10px">Clic en una celda ocupada para ver detalles de la carga.</p>
+</div>
+
+<div id="screen-nueva-carga" class="screen">
+  <div class="page-header">
+    <div><p class="page-title">Nueva carga</p><p class="page-sub">Rellena los datos y el sistema asignará muelle automáticamente</p></div>
+  </div>
+  <div class="card" style="max-width:640px">
+    <div class="form-grid">
+      <div class="form-group"><label>Referencia</label><input id="f-ref" type="text" placeholder="EXP25001"></div>
+      <div class="form-group"><label>Cliente</label><input id="f-cliente" type="text" placeholder="Nombre del cliente"></div>
+    </div>
+    <div class="form-grid three">
+      <div class="form-group"><label>Palets</label><input id="f-palets" type="number" min="1" max="33" value="24"></div>
+      <div class="form-group"><label>Tipo vehículo</label>
+        <select id="f-vehiculo"><option value="Camión">Camión</option><option value="Contenedor">Contenedor</option></select>
+      </div>
+      <div class="form-group"><label>Tipo carga</label>
+        <select id="f-tipo"><option value="Completa">Completa</option><option value="Parcial">Parcial</option></select>
+      </div>
+    </div>
+    <div class="form-grid" style="max-width:340px">
+      <div class="form-group"><label>Hora deseada</label><input id="f-hora" type="time" value="08:00" min="06:00" max="18:00"></div>
+      <div class="form-group" style="display:flex;align-items:flex-end">
+        <button class="btn btn-primary" onclick="asignarCarga()">&#9889; Asignar</button>
+      </div>
+    </div>
+    <div id="resultado-asignacion"></div>
+  </div>
+</div>
+
+<div id="screen-agenda" class="screen">
+  <div class="page-header">
+    <div><p class="page-title">Agenda del día</p><p class="page-sub" id="agenda-sub"></p></div>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table class="agenda-table">
+      <thead><tr>
+        <th>Inicio</th><th>Fin</th><th>Referencia</th><th>Cliente</th>
+        <th>Muelle</th><th>Vehículo</th><th>Palets</th><th>Estado</th><th></th>
+      </tr></thead>
+      <tbody id="agenda-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="screen-dashboard" class="screen">
+  <div class="page-header"><div><p class="page-title">Dashboard operativo</p><p class="page-sub" id="dash-sub"></p></div></div>
+  <div class="metrics-grid">
+    <div class="metric accent"><div class="metric-label">Ocupación muelles</div><div class="metric-value" id="kpi-ocup">—</div><div class="metric-sub">sobre horas disponibles</div></div>
+    <div class="metric"><div class="metric-label">Cargas programadas</div><div class="metric-value" id="kpi-prog">—</div><div class="metric-sub">hoy</div></div>
+    <div class="metric"><div class="metric-label">Muelles libres</div><div class="metric-value" id="kpi-libres">—</div><div class="metric-sub">en este momento</div></div>
+    <div class="metric"><div class="metric-label">Próxima carga</div><div class="metric-value" id="kpi-prox" style="font-size:18px">—</div><div class="metric-sub" id="kpi-prox-sub"></div></div>
+  </div>
+  <div class="dash-grid">
+    <div class="card">
+      <div class="card-title">Distribución horaria de cargas</div>
+      <div style="position:relative;height:220px"><canvas id="chart-horas" role="img" aria-label="Cargas activas por hora"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Saturación por muelle</div>
+      <div id="sat-muelles"></div>
+    </div>
+  </div>
+</div>
+
+<div id="screen-config" class="screen">
+  <div class="page-header"><div><p class="page-title">Configuración</p><p class="page-sub">Ajusta tiempos estándar y estado de muelles</p></div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div class="card">
+      <div class="card-title">Tiempos de operación (minutos)</div>
+      <table class="config-table" id="config-table"></table>
+      <p style="font-size:11px;color:var(--gray-400);margin-top:12px">Los cambios se aplican en la próxima asignación.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Estado de muelles</div>
+      <div class="muelles-grid" id="muelles-grid"></div>
+      <p style="font-size:11px;color:var(--gray-400);margin-top:12px">Clic para bloquear / desbloquear.</p>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<div class="modal-ov" id="modal-ov" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-ttl"><span>Detalle de carga</span><button class="btn btn-secondary btn-sm" onclick="closeModal()">✕ Cerrar</button></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+<div class="toast-w"><div class="toast" id="toast"></div></div>
+
+<script>
+const HORAS=[6,7,8,9,10,11,12,13,14,15,16,17];
+const NUM_MUELLES=10;
+let tiempos={'Camión':{'Completa':60,'Parcial':30},'Contenedor':{'Completa':120,'Parcial':60}};
+let muelles=Array.from({length:NUM_MUELLES},(_,i)=>({id:'M'+String(i+1).padStart(2,'0'),bloqueado:false}));
+function hoyISO(){return new Date().toISOString().split('T')[0];}
+let fechaSel=hoyISO();
+let cargas=[
+  {ref:'EXP25001',cliente:'Mercadona',palets:24,vehiculo:'Camión',tipo:'Completa',inicio:'08:00',fin:'09:00',muelle:'M03',estado:'Programada',fecha:hoyISO()},
+  {ref:'EXP25002',cliente:'Druni',palets:18,vehiculo:'Camión',tipo:'Parcial',inicio:'08:30',fin:'09:00',muelle:'M07',estado:'Programada',fecha:hoyISO()},
+  {ref:'EXP25003',cliente:'Primor',palets:30,vehiculo:'Contenedor',tipo:'Completa',inicio:'10:00',fin:'12:00',muelle:'M01',estado:'Programada',fecha:hoyISO()},
+  {ref:'EXP25004',cliente:'El Corte Inglés',palets:12,vehiculo:'Camión',tipo:'Parcial',inicio:'11:00',fin:'11:30',muelle:'M05',estado:'En espera',fecha:hoyISO()},
+  {ref:'EXP25005',cliente:'Mercadona',palets:28,vehiculo:'Contenedor',tipo:'Parcial',inicio:'14:00',fin:'15:00',muelle:'M02',estado:'Programada',fecha:hoyISO()},
+];
+let chartHoras=null;
+function toMin(t){const[h,m]=t.split(':').map(Number);return h*60+m;}
+function toTime(m){return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}
+function fmtDate(iso){return new Date(iso+'T12:00:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});}
+function cargasDia(){return cargas.filter(c=>c.fecha===fechaSel);}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+function goTo(id,el){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.getElementById('screen-'+id).classList.add('active');
+  if(id==='planificacion')renderGantt();
+  else if(id==='agenda')renderAgenda();
+  else if(id==='dashboard')renderDashboard();
+  else if(id==='config')renderConfig();
+}
+function changeDate(v){fechaSel=v;refreshActive();}
+function changeDay(d){const dt=new Date(fechaSel+'T12:00:00');dt.setDate(dt.getDate()+d);fechaSel=dt.toISOString().split('T')[0];document.getElementById('date-input').value=fechaSel;refreshActive();}
+function refreshActive(){const a=document.querySelector('.screen.active');const id=a.id.replace('screen-','');if(id==='planificacion')renderGantt();else if(id==='agenda')renderAgenda();else if(id==='dashboard')renderDashboard();}
+function renderGantt(){
+  const cd=cargasDia();
+  const sub=document.getElementById('plan-sub');
+  if(sub)sub.textContent=fmtDate(fechaSel)+' · '+cd.length+' carga'+(cd.length!==1?'s':'');
+  let h='<thead><tr><th class="mth">Muelle</th>';
+  HORAS.forEach(hr=>{h+='<th>'+String(hr).padStart(2,'0')+':00</th>';});
+  h+='</tr></thead><tbody>';
+  muelles.forEach(m=>{
+    h+='<tr><td class="mc">'+m.id+(m.bloqueado?' 🔒':'')+'</td>';
+    HORAS.forEach(hr=>{
+      if(m.bloqueado){h+='<td><div class="slot bloqueado">—</div></td>';return;}
+      const si=hr*60,sf=(hr+1)*60;
+      const c=cd.find(c=>c.muelle===m.id&&toMin(c.inicio)<sf&&toMin(c.fin)>si);
+      if(c){
+        const cls=c.estado==='En espera'?'espera':'ocupado';
+        const lbl=c.ref.length>8?c.ref.slice(0,8)+'…':c.ref;
+        h+='<td><div class="slot '+cls+'" onclick="showModal(\''+c.ref+'\')" title="'+c.ref+' — '+c.cliente+'">'+lbl+'</div></td>';
+      }else{h+='<td><div class="slot libre">Libre</div></td>';}
+    });
+    h+='</tr>';
+  });
+  h+='</tbody>';
+  document.getElementById('gantt-table').innerHTML=h;
+}
+function showModal(ref){
+  const c=cargas.find(x=>x.ref===ref);if(!c)return;
+  const bmap={'Programada':'badge-prog','En espera':'badge-esp','Asignada':'badge-asig','Completada':'badge-comp'};
+  document.getElementById('modal-body').innerHTML=[
+    ['Referencia',c.ref],['Cliente',c.cliente],['Muelle',c.muelle],
+    ['Inicio',c.inicio],['Fin previsto',c.fin],['Vehículo',c.vehiculo],
+    ['Tipo',c.tipo],['Palets',c.palets],
+    ['Estado','<span class="badge '+(bmap[c.estado]||'badge-prog')+'">'+c.estado+'</span>']
+  ].map(([k,v])=>'<div class="modal-row"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>').join('');
+  document.getElementById('modal-ov').classList.add('open');
+}
+function closeModal(){document.getElementById('modal-ov').classList.remove('open');}
+function asignarCarga(){
+  const ref=document.getElementById('f-ref').value.trim();
+  const cliente=document.getElementById('f-cliente').value.trim();
+  const palets=parseInt(document.getElementById('f-palets').value)||0;
+  const vehiculo=document.getElementById('f-vehiculo').value;
+  const tipo=document.getElementById('f-tipo').value;
+  const hora=document.getElementById('f-hora').value;
+  if(!ref||!cliente){showToast('Completa la referencia y el cliente.');return;}
+  if(cargas.find(c=>c.ref===ref)){showToast('Ya existe una carga con esa referencia.');return;}
+  const dur=tiempos[vehiculo][tipo];
+  const ini=toMin(hora),fin=ini+dur;
+  if(fin>18*60){setResult(false,'Fuera de horario. La carga finalizaría a las '+toTime(fin)+' (límite 18:00).');return;}
+  const libre=muelles.find(m=>{
+    if(m.bloqueado)return false;
+    return!cargasDia().some(c=>{
+      if(c.muelle!==m.id)return false;
+      return ini<toMin(c.fin)&&fin>toMin(c.inicio);
+    });
+  });
+  if(!libre){setResult(false,'Sin muelles disponibles a las '+hora+' para '+dur+' min. Prueba otra hora.');return;}
+  cargas.push({ref,cliente,palets,vehiculo,tipo,inicio:hora,fin:toTime(fin),muelle:libre.id,estado:'Programada',fecha:fechaSel});
+  document.getElementById('resultado-asignacion').innerHTML='<div class="result-ok"><div class="result-title ok">&#10003; Muelle asignado correctamente</div><div class="result-grid"><div class="result-item"><label>Referencia</label><div class="val">'+ref+'</div></div><div class="result-item"><label>Muelle</label><div class="val">'+libre.id+'</div></div><div class="result-item"><label>Duración</label><div class="val">'+dur+' min</div></div><div class="result-item"><label>Inicio</label><div class="val">'+hora+'</div></div><div class="result-item"><label>Fin previsto</label><div class="val">'+toTime(fin)+'</div></div><div class="result-item"><label>Palets</label><div class="val">'+palets+'</div></div></div></div>';
+  document.getElementById('f-ref').value='';
+  document.getElementById('f-cliente').value='';
+  showToast(ref+' → '+libre.id+' a las '+hora);
+}
+function setResult(ok,msg){
+  document.getElementById('resultado-asignacion').innerHTML='<div class="result-'+(ok?'ok':'err')+'"><div class="result-title '+(ok?'ok':'err')+'">'+(ok?'✓':'✕')+' '+msg+'</div></div>';
+}
+function renderAgenda(){
+  const cd=cargasDia().sort((a,b)=>a.inicio.localeCompare(b.inicio));
+  const sub=document.getElementById('agenda-sub');
+  if(sub)sub.textContent=fmtDate(fechaSel)+' · '+cd.length+' carga'+(cd.length!==1?'s':'');
+  const body=document.getElementById('agenda-body');
+  if(!cd.length){body.innerHTML='<tr><td colspan="9"><div class="empty"><div class="empty-icon">📭</div><p>Sin cargas para este día</p></div></td></tr>';return;}
+  const bmap={'Programada':'badge-prog','En espera':'badge-esp','Asignada':'badge-asig','Completada':'badge-comp'};
+  body.innerHTML=cd.map(c=>'<tr><td><span class="hour-badge">'+c.inicio+'</span></td><td><span class="hour-badge">'+c.fin+'</span></td><td><span class="ref-code">'+c.ref+'</span></td><td>'+c.cliente+'</td><td><span class="muelle-badge">'+c.muelle+'</span></td><td style="color:var(--gray-600)">'+c.vehiculo+'</td><td style="text-align:center">'+c.palets+'</td><td><span class="badge '+(bmap[c.estado]||'badge-prog')+'">'+c.estado+'</span></td><td><button class="btn btn-danger btn-sm" onclick="eliminarCarga(\''+c.ref+'\')">✕</button></td></tr>').join('');
+}
+function eliminarCarga(ref){
+  if(!confirm('¿Eliminar la carga '+ref+'?'))return;
+  cargas=cargas.filter(c=>c.ref!==ref);
+  renderAgenda();showToast(ref+' eliminada');
+}
+function renderDashboard(){
+  const cd=cargasDia();
+  const horasTotal=(18-6)*NUM_MUELLES;
+  const horasOcup=cd.reduce((a,c)=>(a+(toMin(c.fin)-toMin(c.inicio))/60),0);
+  document.getElementById('kpi-ocup').textContent=Math.round(horasOcup/horasTotal*100)+'%';
+  document.getElementById('kpi-prog').textContent=cd.length;
+  const now=new Date();const minNow=now.getHours()*60+now.getMinutes();
+  const ocupNow=new Set(cd.filter(c=>toMin(c.inicio)<=minNow&&toMin(c.fin)>minNow).map(c=>c.muelle));
+  document.getElementById('kpi-libres').textContent=NUM_MUELLES-ocupNow.size;
+  const prox=cd.filter(c=>toMin(c.inicio)>minNow).sort((a,b)=>a.inicio.localeCompare(b.inicio))[0];
+  document.getElementById('kpi-prox').textContent=prox?prox.inicio+'  '+prox.muelle:'—';
+  const ps=document.getElementById('kpi-prox-sub');if(ps&&prox)ps.textContent=prox.cliente;
+  const sub=document.getElementById('dash-sub');if(sub)sub.textContent=fmtDate(fechaSel);
+  document.getElementById('sat-muelles').innerHTML=muelles.map(m=>{
+    const hOcup=cd.filter(c=>c.muelle===m.id).reduce((a,c)=>(a+(toMin(c.fin)-toMin(c.inicio))/60),0);
+    const pct=Math.round(hOcup/12*100);
+    const col=pct>80?'#DC2626':pct>50?'#D97706':'#16A34A';
+    return '<div class="sat-row"><span class="sat-label">'+m.id+'</span><div class="sat-bg"><div class="sat-fg" style="width:'+pct+'%;background:'+col+'"></div></div><span class="sat-pct">'+pct+'%</span></div>';
+  }).join('');
+  const data=HORAS.map(hr=>{const si=hr*60,sf=(hr+1)*60;return cd.filter(c=>toMin(c.inicio)<sf&&toMin(c.fin)>si).length;});
+  if(chartHoras)chartHoras.destroy();
+  chartHoras=new Chart(document.getElementById('chart-horas'),{
+    type:'bar',
+    data:{labels:HORAS.map(hr=>String(hr).padStart(2,'0')+'h'),datasets:[{label:'Cargas activas',data,backgroundColor:'#BFDBFE',borderColor:'#2563EB',borderWidth:1.5,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1,color:'#94A3B8'},grid:{color:'rgba(0,0,0,0.04)'}},x:{ticks:{color:'#94A3B8'},grid:{display:false}}}}
+  });
+}
+function renderConfig(){
+  const veh=['Camión','Contenedor'],tip=['Completa','Parcial'];
+  let h='<thead><tr><th>Vehículo</th><th>Tipo carga</th><th>Minutos</th></tr></thead><tbody>';
+  veh.forEach(v=>tip.forEach(t=>{h+='<tr><td>'+v+'</td><td>'+t+'</td><td><input type="number" class="config-input" min="10" max="480" value="'+tiempos[v][t]+'" onchange="tiempos[\''+v+'\'][\''+t+'\']=parseInt(this.value)||tiempos[\''+v+'\'][\''+t+'\']"></td></tr>';}));
+  h+='</tbody>';
+  document.getElementById('config-table').innerHTML=h;
+  document.getElementById('muelles-grid').innerHTML=muelles.map(m=>'<button class="muelle-btn'+(m.bloqueado?' bloqueado':'')+'" onclick="toggleMuelle(\''+m.id+'\')">'+m.id+(m.bloqueado?'<br><span style="font-size:10px;font-weight:400">🔒 BLQ</span>':'')+'</button>').join('');
+}
+function toggleMuelle(id){
+  const m=muelles.find(x=>x.id===id);if(!m)return;
+  m.bloqueado=!m.bloqueado;
+  showToast(m.id+' '+(m.bloqueado?'bloqueado':'desbloqueado'));
+  renderConfig();
+}
+function init(){
+  const hoy=hoyISO();
+  document.getElementById('date-input').value=fechaSel;
+  document.getElementById('hdr-hoy').textContent=fmtDate(hoy);
+  renderGantt();
+}
+init();
+</script>
+</body>
+</html>
